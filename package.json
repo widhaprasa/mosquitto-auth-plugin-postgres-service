@@ -1,0 +1,14 @@
+{
+  "name": "mosquitto-auth-service",
+  "version": "1.0.0",
+  "description": "Mosquitto Auth Service",
+  "author": "Widhaprasa Waliprana <widhaprasa@iotera.io>",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.16.1",
+    "mysql": "^2.17.1"
+  }
+}
