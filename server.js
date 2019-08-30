@@ -5,25 +5,19 @@ var express = require('express');
 const EXPRESS_PORT = 3000;
 const EXPRESS_HOST = '0.0.0.0';
 
-// MySQL
-var mysql = require('mysql');
-var mysqlConfig = {};
-mysqlConfig.host = process.env.MYSQL_HOST != null ? process.env.MYSQL_HOST : 'localhost';
-mysqlConfig.port = process.env.MYSQL_PORT != null ? process.env.MYSQL_PORT : 3306;
-mysqlConfig.database = process.env.MYSQL_DATABASE != null ? process.env.MYSQL_DATABASE : 'mosquitto_acl';
-if (process.env.MYSQL_USER != null) {
-    mysqlConfig.user = process.env.MYSQL_USER;
-}
-if (process.env.MYSQL_PASSWORD != null) {
-    mysqlConfig.password = process.env.MYSQL_PASSWORD;
-}
+// Underscore
+var _ = require('underscore');
 
-var db = mysql.createConnection(mysqlConfig);
-db.connect((err) => {
-    if (err) {
-        throw err;
-    }
-});
+// PostgreSQL
+var Pool = require('pg').Pool;
+var pqConfig = {};
+pqConfig.host = process.env.PG_HOST != null ? process.env.PG_HOST : 'localhost';
+pqConfig.port = process.env.PG_PORT != null ? process.env.PG_PORT : 5432;
+pqConfig.database = 'mosquitto_acl';
+pqConfig.user = 'mosquitto_acl';
+pqConfig.password = 'mosquitto_acl';
+
+var pgPool = new Pool(pqConfig);
 
 // Auth
 var auth = require('./auth.js');
@@ -37,38 +31,67 @@ app.get('/', (req, res) => {
 });
 
 app.post('/add/su', (req, res) => {
+    
     const body = req.body;
-    auth.createSU(db, body.username, body.password, function (code) {
+    if (!_.isString(body.username) || !_.isString(body.password)) {
+        res.sendStatus(400);
+        return;
+    }
+
+    auth.createSU(pgPool, body.username, body.password, function (code) {
         if (code == 0) {
             res.sendStatus(200);
         } else {
-            res.sendStatus(404);
+            res.sendStatus(400);
         }
     });
 });
 
 app.post('/add/user', (req, res) => {
+    
     const body = req.body;
-    auth.createUser(db, body.username, body.password, body.topics, function (code) {
+    if (!_.isString(body.username) || !_.isString(body.password) || !_.isArray(body.topics)) {
+        res.sendStatus(400);
+        return;
+    }
+
+    auth.createUser(pgPool, body.username, body.password, body.topics, function (code) {
         if (code == 0) {
             res.sendStatus(200);
         } else {
-            res.sendStatus(404);
+            res.sendStatus(400);
         }
     });
 });
 
 app.post('/remove/user', (req, res) => {
+
     const body = req.body;
-    auth.deleteUser(db, body.username, function (code) {
+    if (!_.isString(body.username)) {
+        res.sendStatus(400);
+        return;
+    }
+
+    auth.deleteUser(pgPool, body.username, function (code) {
         if (code == 0) {
             res.sendStatus(200);
         } else {
-            res.sendStatus(404);
+            res.sendStatus(400);
         }
     });
 });
 
-app.listen(EXPRESS_PORT, EXPRESS_HOST, function () {
-    console.log('Listening on ' + EXPRESS_HOST + ':' + EXPRESS_PORT);
+// Main
+pgPool.connect((err) => {
+    if (err) {
+        throw err;
+    }
+
+    app.listen(EXPRESS_PORT, EXPRESS_HOST, function () {
+        console.log('##################################################');
+        console.log('');
+        console.log('Listening on ' + EXPRESS_HOST + ':' + EXPRESS_PORT);
+        console.log('');
+        console.log('##################################################');
+    });
 });

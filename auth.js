@@ -1,3 +1,7 @@
+
+// Underscore
+var _ = require('underscore');
+
 // PBKDF2 SHA256
 function genFormattedPBKDF2SHA256(password, iteration = 901) {
     var crypto = require('crypto');
@@ -10,28 +14,29 @@ function genFormattedPBKDF2SHA256(password, iteration = 901) {
     return formattedKey;
 }
 
-function createSU(db, username, password, callback) {
+// Create Super User
+function createSU(pgPool, username, password, callback) {
 
     username = username.trim();
     password = password.trim();
 
-    const searchSql = "SELECT * FROM users WHERE username = '" + username + "'";
-    db.query(searchSql, function (err, result) {
+    const searchSql = "SELECT * FROM account WHERE username = '" + username + "'";
+    pgPool.query(searchSql, function (err, result) {
         if (err) {
             callback(-1);
             return;
         }
 
-        if (result.length != 0) {
+        if (result.rowCount != 0) {
             callback(-2);
             return;
         }
 
         const pbkdf2 = genFormattedPBKDF2SHA256(password);
-        const insertSql = "INSERT INTO users (username, pw, super) " +
+        const insertSql = "INSERT INTO account (username, pw, super) " +
             "VALUES ('" + username + "', '" + pbkdf2 + "', 1)";
 
-        db.query(insertSql, function (err, result) {
+        pgPool.query(insertSql, function (err, result) {
             if (err) {
                 callback(-3);
                 return;
@@ -42,49 +47,68 @@ function createSU(db, username, password, callback) {
     });
 }
 
-function createUser(db, username, password, topics, callback) {
+// Create User
+function createUser(pgPool, username, password, topics, callback) {
 
     username = username.trim();
     password = password.trim();
 
-    if (topics.length == 0) {
-        callback(-5);
+    let topicSet = new Set();
+    let insertTopicsSql = "INSERT INTO acls (username, topic, rw) VALUES ";
+    let topicsValues = "";
+    for (var i = 0; i < topics.length; ++i) {
+        let topicObject = topics[i];
+        if (!_.isObject(topicObject)) {
+            continue;
+        }
+
+        let topic = topicObject.topic;
+        let rw = topicObject.rw;
+
+        if (!_.isString(topic) || !_.isNumber(rw)) {
+            continue;
+        }
+
+        if (topicSet.has(topic)) {
+            continue;
+        }
+
+        if (i != 0) {
+            topicsValues += ', ';
+        }
+        topicsValues += "('" + username + "', '" + topic + "', " + rw + ")";
+        topicSet.add(topic);
+    }
+    insertTopicsSql += topicsValues;
+
+    if (topicSet.size == 0) {
+        callback(5);
         return;
     }
 
-    const searchSql = "SELECT * FROM users WHERE username = '" + username + "'";
-    db.query(searchSql, function (err, result) {
+    const searchSql = "SELECT * FROM account WHERE username = '" + username + "'";
+    pgPool.query(searchSql, function (err, result) {
         if (err) {
             callback(-1);
             return;
         }
 
-        if (result.length != 0) {
+        if (result.rowCount != 0) {
             callback(-2);
             return;
         }
 
         const pbkdf2 = genFormattedPBKDF2SHA256(password);
-        const insertSql = "INSERT INTO users (username, pw, super) VALUES " +
+        const insertSql = "INSERT INTO account (username, pw, super) VALUES " +
             "('" + username + "', '" + pbkdf2 + "', 0)";
 
-        db.query(insertSql, function (err, result) {
+        pgPool.query(insertSql, function (err, result) {
             if (err) {
                 callback(-3);
                 return;
             }
 
-            let insertTopicsSql = "INSERT INTO acls (username, topic, rw) VALUES ";
-            let topicsValues = "";
-            for (var i = 0; i < topics.length; ++i) {
-                if (i != 0) {
-                    topicsValues += ', ';
-                }
-                topicsValues += "('" + username + "', '" + topics[i] + "', 1)";
-            }
-            insertTopicsSql += topicsValues;
-
-            db.query(insertTopicsSql, function (err, result) {
+            pgPool.query(insertTopicsSql, function (err, result) {
                 if (err) {
                     callback(-4);
                     return;
@@ -96,19 +120,20 @@ function createUser(db, username, password, topics, callback) {
     });
 }
 
-function deleteUser(db, username, callback) {
+// Delete User
+function deleteUser(pgPool, username, callback) {
 
     username = username.trim();
 
-    const deleteSql = "DELETE FROM users WHERE username = '" + username + "'";
-    db.query(deleteSql, function (err, result) {
+    const deleteSql = "DELETE FROM account WHERE username = '" + username + "'";
+    pgPool.query(deleteSql, function (err, result) {
         if (err) {
             callback(-1);
             return;
         }
 
         const deleteTopicsSql = "DELETE FROM acls WHERE username = '" + username + "'";
-        db.query(deleteTopicsSql, function (err, result) {
+        pgPool.query(deleteTopicsSql, function (err, result) {
             if (err) {
                 callback(-2);
                 return;
