@@ -1,16 +1,13 @@
-
 // Underscore
 var _ = require('underscore');
 
 // PBKDF2 SHA256
 function genFormattedPBKDF2SHA256(password, iteration = 901) {
     var crypto = require('crypto');
-    const salt64 = crypto.randomBytes(12).toString('base64');
-    const salt64len = salt64.length;
-    const key = crypto.pbkdf2Sync(password, salt64, salt64len, iteration, 'sha256');
+    const salt = crypto.randomBytes(12).toString('base64');
+    const key = crypto.pbkdf2Sync(password, salt, iteration, 24, 'sha256');
     const key64 = key.toString('base64');
-
-    const formattedKey = 'PBKDF2' + '$' + 'sha256' + '$' + iteration + '$' + salt64 + '$' + key64;
+    const formattedKey = 'PBKDF2' + '$' + 'sha256' + '$' + iteration + '$' + salt + '$' + key64;
     return formattedKey;
 }
 
