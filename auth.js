@@ -79,7 +79,7 @@ function createUser(pgPool, username, password, topics, callback) {
     insertTopicsSql += topicsValues;
 
     if (topicSet.size == 0) {
-        callback(5);
+        callback(-5);
         return;
     }
 
@@ -117,6 +117,30 @@ function createUser(pgPool, username, password, topics, callback) {
     });
 }
 
+// Change Password User
+function changePasswordUser(pgPool, username, password, callback) {
+
+    username = username.trim();
+    password = password.trim();
+
+    const pbkdf2 = genFormattedPBKDF2SHA256(password);
+    const updateSql = "UPDATE account SET pw = '" + pbkdf2 + "' WHERE username = '" + username + "'";
+
+    pgPool.query(updateSql, function (err, result) {
+        if (err) {
+            callback(-1);
+            return;
+        }
+
+        if (result.rowCount != 1) {
+            callback(-2);
+            return;
+        }
+
+        callback(0);
+    });
+}
+
 // Delete User
 function deleteUser(pgPool, username, callback) {
 
@@ -141,8 +165,32 @@ function deleteUser(pgPool, username, callback) {
     });
 }
 
+// Clear
+function clear(pgPool, callback) {
+
+    const deleteSql = "DELETE FROM account";
+    pgPool.query(deleteSql, function (err, result) {
+        if (err) {
+            callback(-1);
+            return;
+        }
+
+        const deleteTopicsSql = "DELETE FROM acls";
+        pgPool.query(deleteTopicsSql, function (err, result) {
+            if (err) {
+                callback(-2);
+                return;
+            }
+
+            callback(0);
+        });
+    });
+}
+
 module.exports = {
     createSU,
     createUser,
-    deleteUser
+    changePasswordUser,
+    deleteUser,
+    clear
 }

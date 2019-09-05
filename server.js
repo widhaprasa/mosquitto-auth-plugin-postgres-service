@@ -64,6 +64,23 @@ app.post('/add/user', (req, res) => {
     });
 });
 
+app.post('/change/password/user', (req, res) => {
+    
+    const body = req.body;
+    if (!_.isString(body.username) || !_.isString(body.password)) {
+        res.sendStatus(400);
+        return;
+    }
+    
+    auth.changePasswordUser(pgPool, body.username, body.password, function (code) {
+        if (code == 0) {
+            res.sendStatus(200);
+        } else {
+            res.sendStatus(400);
+        }
+    });
+});
+
 app.post('/remove/user', (req, res) => {
 
     const body = req.body;
@@ -73,6 +90,17 @@ app.post('/remove/user', (req, res) => {
     }
 
     auth.deleteUser(pgPool, body.username, function (code) {
+        if (code == 0) {
+            res.sendStatus(200);
+        } else {
+            res.sendStatus(400);
+        }
+    });
+});
+
+app.post('/clear', (req, res) => {
+
+    auth.clear(pgPool, function (code) {
         if (code == 0) {
             res.sendStatus(200);
         } else {
