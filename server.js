@@ -26,8 +26,8 @@ var auth = require('./auth.js');
 var app = express();
 app.use(express.json());
 
-app.get('/', (req, res) => {
-    res.send('Hello world\n');
+app.get('/health', (req, res) => {
+    res.send('Good\n');
 });
 
 app.post('/add/su', (req, res) => {
