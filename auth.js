@@ -2,13 +2,52 @@
 var _ = require('underscore');
 
 // PBKDF2 SHA256
-function genFormattedPBKDF2SHA256(password, iteration = 901) {
+function buildFormattedPBKDF2SHA256(password, iteration = 901) {
     var crypto = require('crypto');
     const salt = crypto.randomBytes(12).toString('base64');
     const key = crypto.pbkdf2Sync(password, salt, iteration, 24, 'sha256');
     const key64 = key.toString('base64');
     const formattedKey = 'PBKDF2' + '$' + 'sha256' + '$' + iteration + '$' + salt + '$' + key64;
     return formattedKey;
+}
+
+// Count User
+function countUser(pgPool, callback) {
+
+    const searchSql = "SELECT count(username) FROM account";
+    pgPool.query(searchSql, function (err, result) {
+        if (err) {
+            callback(0);
+            return;
+        }
+        callback(result.rows[0].count);
+    });
+}
+
+// List Super User
+function listSU(pgPool, callback) {
+
+    const searchSql = "SELECT username FROM account WHERE super = 1";
+    pgPool.query(searchSql, function (err, result) {
+        if (err) {
+            callback([]);
+            return;
+        }
+        callback(result.rows);
+    });
+}
+
+// User Exist
+function userExist(pgPool, username, callback) {
+
+    const searchSql = "SELECT username, super FROM account WHERE username = '" + username + "'";
+    pgPool.query(searchSql, function (err, result) {
+        if (err) {
+            callback(-1);
+            return;
+        }
+        callback(result.rowCount > 0 ? 0 : -2);
+    });
 }
 
 // Create Super User
@@ -29,7 +68,7 @@ function createSU(pgPool, username, password, callback) {
             return;
         }
 
-        const pbkdf2 = genFormattedPBKDF2SHA256(password);
+        const pbkdf2 = buildFormattedPBKDF2SHA256(password);
         const insertSql = "INSERT INTO account (username, pw, super) " +
             "VALUES ('" + username + "', '" + pbkdf2 + "', 1)";
 
@@ -95,7 +134,7 @@ function createUser(pgPool, username, password, topics, callback) {
             return;
         }
 
-        const pbkdf2 = genFormattedPBKDF2SHA256(password);
+        const pbkdf2 = buildFormattedPBKDF2SHA256(password);
         const insertSql = "INSERT INTO account (username, pw, super) VALUES " +
             "('" + username + "', '" + pbkdf2 + "', 0)";
 
@@ -123,7 +162,7 @@ function changePasswordUser(pgPool, username, password, callback) {
     username = username.trim();
     password = password.trim();
 
-    const pbkdf2 = genFormattedPBKDF2SHA256(password);
+    const pbkdf2 = buildFormattedPBKDF2SHA256(password);
     const updateSql = "UPDATE account SET pw = '" + pbkdf2 + "' WHERE username = '" + username + "'";
 
     pgPool.query(updateSql, function (err, result) {
@@ -188,6 +227,9 @@ function clear(pgPool, callback) {
 }
 
 module.exports = {
+    countUser,
+    listSU,
+    userExist,
     createSU,
     createUser,
     changePasswordUser,
