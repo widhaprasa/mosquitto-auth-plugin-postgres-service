@@ -11,8 +11,8 @@ var _ = require('underscore');
 // PostgreSQL
 var Pool = require('pg').Pool;
 var pqConfig = {};
-pqConfig.host = process.env.PG_HOST != null ? process.env.PG_HOST : 'm2mdev.tritronik.com';
-pqConfig.port = process.env.PG_PORT != null ? process.env.PG_PORT : 55432;
+pqConfig.host = process.env.PG_HOST != null ? process.env.PG_HOST : 'localhost';
+pqConfig.port = process.env.PG_PORT != null ? process.env.PG_PORT : 5432;
 pqConfig.database = 'mosquitto_acl';
 pqConfig.user = 'mosquitto_acl';
 pqConfig.password = 'mosquitto_acl';
