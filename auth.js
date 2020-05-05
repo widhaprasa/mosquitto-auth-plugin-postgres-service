@@ -11,8 +11,8 @@ function buildFormattedPBKDF2SHA256(password, iteration = 901) {
     return formattedKey;
 }
 
-// Count User
-function countUser(pgPool, callback) {
+// Count Account
+function countAccount(pgPool, callback) {
 
     const searchSql = "SELECT count(username) FROM account";
     pgPool.query(searchSql, function (err, result) {
@@ -21,6 +21,113 @@ function countUser(pgPool, callback) {
             return;
         }
         callback(result.rows[0].count);
+    });
+}
+
+// Account Exist
+function accountExist(pgPool, username, callback) {
+
+    const searchSql = "SELECT username, super FROM account WHERE username = '" + username + "'";
+    pgPool.query(searchSql, function (err, result) {
+        if (err) {
+            callback(-1);
+            return;
+        }
+        callback(result.rowCount > 0 ? 0 : -2);
+    });
+}
+
+// Change Password Account
+function changePasswordAccount(pgPool, username, password, callback) {
+
+    username = username.trim();
+    password = password.trim();
+
+    const pbkdf2 = buildFormattedPBKDF2SHA256(password);
+    const updateSql = "UPDATE account SET pw = '" + pbkdf2 + "' WHERE username = '" + username + "'";
+
+    pgPool.query(updateSql, function (err, result) {
+        if (err) {
+            callback(-1);
+            return;
+        }
+
+        if (result.rowCount != 1) {
+            callback(-2);
+            return;
+        }
+
+        callback(0);
+    });
+}
+
+// Delete Account
+function deleteAccount(pgPool, username, callback) {
+
+    username = username.trim();
+
+    const deleteSql = "DELETE FROM account WHERE username = '" + username + "'";
+    pgPool.query(deleteSql, function (err, result) {
+        if (err) {
+            callback(-1);
+            return;
+        }
+
+        const deleteTopicsSql = "DELETE FROM acls WHERE username = '" + username + "'";
+        pgPool.query(deleteTopicsSql, function (err, result) {
+            if (err) {
+                callback(-2);
+                return;
+            }
+
+            callback(0);
+        });
+    });
+}
+
+// Delete Account by group
+function deleteAccountByGroup(pgPool, group, callback) {
+
+    group = group.trim();
+
+    const deleteSql = "DELETE FROM account WHERE group_ = '" + group + "'";
+    pgPool.query(deleteSql, function (err, result) {
+        if (err) {
+            callback(-1);
+            return;
+        }
+
+        const deleteTopicsSql = "DELETE FROM acls WHERE group_ = '" + group + "'";
+        pgPool.query(deleteTopicsSql, function (err, result) {
+            if (err) {
+                callback(-2);
+                return;
+            }
+
+            callback(0);
+        });
+    });
+}
+
+// Clear Account
+function clearAccount(pgPool, callback) {
+
+    const deleteSql = "DELETE FROM account";
+    pgPool.query(deleteSql, function (err, result) {
+        if (err) {
+            callback(-1);
+            return;
+        }
+
+        const deleteTopicsSql = "DELETE FROM acls";
+        pgPool.query(deleteTopicsSql, function (err, result) {
+            if (err) {
+                callback(-2);
+                return;
+            }
+
+            callback(0);
+        });
     });
 }
 
@@ -34,19 +141,6 @@ function listSU(pgPool, callback) {
             return;
         }
         callback(result.rows);
-    });
-}
-
-// User Exist
-function userExist(pgPool, username, callback) {
-
-    const searchSql = "SELECT username, super FROM account WHERE username = '" + username + "'";
-    pgPool.query(searchSql, function (err, result) {
-        if (err) {
-            callback(-1);
-            return;
-        }
-        callback(result.rowCount > 0 ? 0 : -2);
     });
 }
 
@@ -84,15 +178,16 @@ function createSU(pgPool, username, password, callback) {
 }
 
 // Create User
-function createUser(pgPool, username, password, topics, callback) {
+function createUser(pgPool, username, group, password, topics, callback) {
 
     username = username.trim();
+    group = group.trim();
     password = password.trim();
 
     let topicSet = new Set();
-    let insertTopicsSql = "INSERT INTO acls (username, topic, rw) VALUES ";
+    let insertTopicsSql = "INSERT INTO acls (username, group_, topic, rw) VALUES ";
     let topicsValues = "";
-    for (var i = 0; i < topics.length; ++i) {
+    for (let i = 0; i < topics.length; ++i) {
         let topicObject = topics[i];
         if (!_.isObject(topicObject)) {
             continue;
@@ -112,7 +207,7 @@ function createUser(pgPool, username, password, topics, callback) {
         if (i != 0) {
             topicsValues += ', ';
         }
-        topicsValues += "('" + username + "', '" + topic + "', " + rw + ")";
+        topicsValues += "('" + username + "', '" + group + "', '" + topic + "', " + rw + ")";
         topicSet.add(topic);
     }
     insertTopicsSql += topicsValues;
@@ -135,8 +230,8 @@ function createUser(pgPool, username, password, topics, callback) {
         }
 
         const pbkdf2 = buildFormattedPBKDF2SHA256(password);
-        const insertSql = "INSERT INTO account (username, pw, super) VALUES " +
-            "('" + username + "', '" + pbkdf2 + "', 0)";
+        const insertSql = "INSERT INTO account (username, group_, pw, super) VALUES " +
+            "('" + username + "', '" + group + "', '" + pbkdf2 + "', 0)";
 
         pgPool.query(insertSql, function (err, result) {
             if (err) {
@@ -156,83 +251,14 @@ function createUser(pgPool, username, password, topics, callback) {
     });
 }
 
-// Change Password User
-function changePasswordUser(pgPool, username, password, callback) {
-
-    username = username.trim();
-    password = password.trim();
-
-    const pbkdf2 = buildFormattedPBKDF2SHA256(password);
-    const updateSql = "UPDATE account SET pw = '" + pbkdf2 + "' WHERE username = '" + username + "'";
-
-    pgPool.query(updateSql, function (err, result) {
-        if (err) {
-            callback(-1);
-            return;
-        }
-
-        if (result.rowCount != 1) {
-            callback(-2);
-            return;
-        }
-
-        callback(0);
-    });
-}
-
-// Delete User
-function deleteUser(pgPool, username, callback) {
-
-    username = username.trim();
-
-    const deleteSql = "DELETE FROM account WHERE username = '" + username + "'";
-    pgPool.query(deleteSql, function (err, result) {
-        if (err) {
-            callback(-1);
-            return;
-        }
-
-        const deleteTopicsSql = "DELETE FROM acls WHERE username = '" + username + "'";
-        pgPool.query(deleteTopicsSql, function (err, result) {
-            if (err) {
-                callback(-2);
-                return;
-            }
-
-            callback(0);
-        });
-    });
-}
-
-// Clear
-function clear(pgPool, callback) {
-
-    const deleteSql = "DELETE FROM account";
-    pgPool.query(deleteSql, function (err, result) {
-        if (err) {
-            callback(-1);
-            return;
-        }
-
-        const deleteTopicsSql = "DELETE FROM acls";
-        pgPool.query(deleteTopicsSql, function (err, result) {
-            if (err) {
-                callback(-2);
-                return;
-            }
-
-            callback(0);
-        });
-    });
-}
-
 module.exports = {
-    countUser,
+    countAccount,
+    accountExist,
+    changePasswordAccount,
+    deleteAccount,
+    deleteAccountByGroup,
+    clearAccount,
     listSU,
-    userExist,
     createSU,
-    createUser,
-    changePasswordUser,
-    deleteUser,
-    clear
+    createUser
 }

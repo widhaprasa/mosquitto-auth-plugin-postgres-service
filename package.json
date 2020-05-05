@@ -1,6 +1,6 @@
 {
   "name": "mosquitto-auth-plug-postgres-service",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Mosquitto Auth Plug Postgres Service",
   "author": "Widhaprasa Waliprana <widhaprasa@gmail.com>",
   "main": "server.js",

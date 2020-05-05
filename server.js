@@ -31,14 +31,14 @@ app.get('/health', (req, res) => {
     res.send('ok');
 });
 
-app.get('/count/user', (req, res) => {
+app.get('/account/count', (req, res) => {
     
-    auth.countUser(pgPool, function (result) {
+    auth.countAccount(pgPool, function (result) {
         res.send(result);
     });
 });
 
-app.post('/exist/user', (req, res) => {
+app.post('/account/exist', (req, res) => {
 
     const body = req.body;
     if (!_.isString(body.username)) {
@@ -46,12 +46,74 @@ app.post('/exist/user', (req, res) => {
         return;
     }
 
-    auth.userExist(pgPool, body.username, function (code) {
+    auth.accountExist(pgPool, body.username, function (code) {
         res.send(code == 0);
     });
 });
 
-app.get('/list/su', (req, res) => {
+app.post('/account/change/password', (req, res) => {
+
+    const body = req.body;
+    if (!_.isString(body.username) || !_.isString(body.password)) {
+        res.sendStatus(400);
+        return;
+    }
+
+    auth.changePasswordAccount(pgPool, body.username, body.password, function (code) {
+        if (code == 0) {
+            res.sendStatus(200);
+        } else {
+            res.sendStatus(400);
+        }
+    });
+});
+
+app.post('/account/remove', (req, res) => {
+
+    const body = req.body;
+    if (!_.isString(body.username)) {
+        res.sendStatus(400);
+        return;
+    }
+
+    auth.deleteAccount(pgPool, body.username, function (code) {
+        if (code == 0) {
+            res.sendStatus(200);
+        } else {
+            res.sendStatus(400);
+        }
+    });
+});
+
+app.post('/account/remove/group', (req, res) => {
+
+    const body = req.body;
+    if (!_.isString(body.group)) {
+        res.sendStatus(400);
+        return;
+    }
+
+    auth.deleteAccountByGroup(pgPool, body.group, function (code) {
+        if (code == 0) {
+            res.sendStatus(200);
+        } else {
+            res.sendStatus(400);
+        }
+    });
+});
+
+app.post('/account/clear', (req, res) => {
+
+    auth.clearAccount(pgPool, function (code) {
+        if (code == 0) {
+            res.sendStatus(200);
+        } else {
+            res.sendStatus(400);
+        }
+    });
+});
+
+app.get('/su/list', (req, res) => {
     
     auth.listSU(pgPool, function (result) {
         const arr = [];
@@ -62,7 +124,7 @@ app.get('/list/su', (req, res) => {
     });
 });
 
-app.post('/add/su', (req, res) => {
+app.post('/su/add', (req, res) => {
 
     const body = req.body;
     if (!_.isString(body.username) || !_.isString(body.password)) {
@@ -79,60 +141,15 @@ app.post('/add/su', (req, res) => {
     });
 });
 
-app.post('/add/user', (req, res) => {
+app.post('/user/add', (req, res) => {
 
     const body = req.body;
-    if (!_.isString(body.username) || !_.isString(body.password) || !_.isArray(body.topics)) {
+    if (!_.isString(body.username) || !_.isString(body.group) || !_.isString(body.password) || !_.isArray(body.topics)) {
         res.sendStatus(400);
         return;
     }
 
-    auth.createUser(pgPool, body.username, body.password, body.topics, function (code) {
-        if (code == 0) {
-            res.sendStatus(200);
-        } else {
-            res.sendStatus(400);
-        }
-    });
-});
-
-app.post('/change/password/user', (req, res) => {
-
-    const body = req.body;
-    if (!_.isString(body.username) || !_.isString(body.password)) {
-        res.sendStatus(400);
-        return;
-    }
-
-    auth.changePasswordUser(pgPool, body.username, body.password, function (code) {
-        if (code == 0) {
-            res.sendStatus(200);
-        } else {
-            res.sendStatus(400);
-        }
-    });
-});
-
-app.post('/remove/user', (req, res) => {
-
-    const body = req.body;
-    if (!_.isString(body.username)) {
-        res.sendStatus(400);
-        return;
-    }
-
-    auth.deleteUser(pgPool, body.username, function (code) {
-        if (code == 0) {
-            res.sendStatus(200);
-        } else {
-            res.sendStatus(400);
-        }
-    });
-});
-
-app.post('/clear', (req, res) => {
-
-    auth.clear(pgPool, function (code) {
+    auth.createUser(pgPool, body.username, body.group, body.password, body.topics, function (code) {
         if (code == 0) {
             res.sendStatus(200);
         } else {
