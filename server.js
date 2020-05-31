@@ -11,11 +11,11 @@ var _ = require('underscore');
 // PostgreSQL
 var Pool = require('pg').Pool;
 var pqConfig = {};
-pqConfig.host = process.env.PG_HOST != null ? process.env.PG_HOST : 'localhost';
-pqConfig.port = process.env.PG_PORT != null ? process.env.PG_PORT : 5432;
-pqConfig.database = 'mosquitto_acl';
-pqConfig.user = 'mosquitto_acl';
-pqConfig.password = 'mosquitto_acl';
+pqConfig.host = !_.isEmpty(process.env.PG_HOST) ? process.env.PG_HOST : 'localhost';
+pqConfig.port = !_.isEmpty(process.env.PG_PORT) ? process.env.PG_PORT : 5432;
+pqConfig.database = !_.isEmpty(process.env.PG_DB) ? process.env.PG_DB : 'mosquitto_acl';
+pqConfig.user = !_.isEmpty(process.env.PG_USER) ? process.env.PG_USER : 'mosquitto_acl';
+pqConfig.password = !_.isEmpty(process.env.PG_PASSWORD) ? process.env.PG_PASSWORD : 'mosquitto_acl';
 
 var pgPool = new Pool(pqConfig);
 
@@ -27,12 +27,11 @@ var app = express();
 app.use(express.json());
 
 app.get('/health', (req, res) => {
-    
     res.send('ok');
 });
 
 app.get('/account/count', (req, res) => {
-    
+
     auth.countAccount(pgPool, function (result) {
         res.send(result);
     });
@@ -114,7 +113,7 @@ app.post('/account/clear', (req, res) => {
 });
 
 app.get('/su/list', (req, res) => {
-    
+
     auth.listSU(pgPool, function (result) {
         const arr = [];
         for (let i in result) {
